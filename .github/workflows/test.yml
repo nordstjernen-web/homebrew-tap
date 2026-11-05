@@ -1,0 +1,46 @@
+name: test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cask:
+    name: Audit, install and uninstall on macOS
+    runs-on: macos-latest
+    timeout-minutes: 20
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      HOMEBREW_NO_INSTALL_FROM_API: 1
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Tap this checkout
+        run: |
+          tap="$(brew --repository)/Library/Taps/nordstjernen-web/homebrew-tap"
+          mkdir -p "$(dirname "$tap")"
+          rm -rf "$tap"
+          ln -s "$GITHUB_WORKSPACE" "$tap"
+
+      - name: Style
+        run: brew style --cask nordstjernen-web/tap/nordstjernen
+
+      - name: Audit as a new official cask
+        run: brew audit --cask --new --online --strict nordstjernen-web/tap/nordstjernen
+
+      - name: Install
+        run: brew install --cask nordstjernen-web/tap/nordstjernen
+
+      - name: Check the signature and Gatekeeper assessment
+        run: |
+          codesign --verify --deep --strict --verbose=2 /Applications/Nordstjernen.app
+          spctl --assess --type execute --verbose=2 /Applications/Nordstjernen.app
+
+      - name: Uninstall with zap
+        run: |
+          brew uninstall --zap --cask nordstjernen-web/tap/nordstjernen
+          test ! -e /Applications/Nordstjernen.app
