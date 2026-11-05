@@ -15,6 +15,7 @@ cask "nordstjernen" do
   end
 
   depends_on arch: :arm64
+  depends_on :macos
 
   app "Nordstjernen.app"
 
